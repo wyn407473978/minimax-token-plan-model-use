@@ -1,0 +1,7 @@
+interface:
+  display_name: "MiniMax Token Plan"
+  short_description: "Call MiniMax multimodal Token Plan APIs."
+  brand_color: "#2563EB"
+  default_prompt: "Use $minimax-token-plan to generate speech, music, lyrics, images, search results, or image understanding with MiniMax Token Plan."
+policy:
+  allow_implicit_invocation: true
