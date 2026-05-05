@@ -3,6 +3,9 @@
 This repository contains a Hermes/Codex Skill for using MiniMax Token Plan models:
 
 - Text to Speech HD
+- `Hailuo-2.3-Fast-768P 6s`
+- `Hailuo-2.3-768P 6s`
+- `music-2.5`
 - `music-2.6`
 - `music-cover`
 - `lyrics_generation`
@@ -73,6 +76,17 @@ node minimax-token-plan/scripts/minimax-token-plan.mjs tts --text "MiniMax test.
 
 # Image generation
 node minimax-token-plan/scripts/minimax-token-plan.mjs image --prompt "a tiny blue cube on a white table" --out-dir images
+
+# Text to video, async task. Uses standard Hailuo 2.3.
+node minimax-token-plan/scripts/minimax-token-plan.mjs video-t2v --prompt "A tiny robot waters a plant [固定]" --model MiniMax-Hailuo-2.3 --duration 6 --resolution 768P
+node minimax-token-plan/scripts/minimax-token-plan.mjs video-query --task-id TASK_ID
+node minimax-token-plan/scripts/minimax-token-plan.mjs video-download --file-id FILE_ID --out video.mp4
+
+# Image to video, async task. Uses Hailuo 2.3 Fast by default.
+node minimax-token-plan/scripts/minimax-token-plan.mjs video-i2v --prompt "The image slowly comes alive [固定]" --image-file images/image-1.jpeg --model MiniMax-Hailuo-2.3-Fast --duration 6 --resolution 768P
+
+# Explicitly use music-2.5 instead of the default music-2.6.
+node minimax-token-plan/scripts/minimax-token-plan.mjs music --model music-2.5 --prompt "Pop, cheerful, short jingle" --lyrics-file lyrics.txt --out song.mp3
 
 # Search
 node minimax-token-plan/scripts/minimax-token-plan.mjs search --query "MiniMax API docs" --count 5

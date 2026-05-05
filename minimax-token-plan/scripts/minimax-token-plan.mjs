@@ -14,6 +14,10 @@ const COMMANDS = new Set([
   "music",
   "music-cover-preprocess",
   "image",
+  "video-t2v",
+  "video-i2v",
+  "video-query",
+  "video-download",
   "search",
   "vlm",
   "raw",
@@ -35,6 +39,10 @@ Commands:
   music                  Generate music. Options: --prompt, --lyrics, --lyrics-file, --out, --model, --cover-feature-id
   music-cover-preprocess Preprocess cover reference. Options: --audio-url or --audio-file
   image                  Generate images. Options: --prompt, --out-dir, --aspect-ratio, --n, --response-format
+  video-t2v              Create text-to-video task. Options: --prompt, --model, --duration, --resolution
+  video-i2v              Create image-to-video task. Options: --prompt, --image-url or --image-file, --model, --duration, --resolution
+  video-query            Query video task. Options: --task-id
+  video-download         Retrieve and download video file. Options: --file-id, --out
   search                 Coding Plan search. Options: --query, --count
   vlm                    Coding Plan VLM. Options: --prompt, --image-url or --image-file
   raw                    Raw JSON POST/GET. Options: --method, --path, --json
@@ -338,6 +346,97 @@ async function image(args) {
   printJson(json);
 }
 
+async function imageDataUrlFromArgs(args, fileKey, urlKey) {
+  let imageUrl = args[urlKey];
+  if (args[fileKey]) {
+    const file = String(args[fileKey]);
+    const buffer = await readFile(file);
+    imageUrl = `data:${mimeFromPath(file)};base64,${buffer.toString("base64")}`;
+  } else if (imageUrl && /^https?:\/\//.test(String(imageUrl)) && boolArg(args, "inline-image-url", false)) {
+    const response = await fetch(String(imageUrl));
+    if (!response.ok) {
+      throw new Error(`Download image failed: ${response.status} ${response.statusText}`);
+    }
+    const buffer = Buffer.from(await response.arrayBuffer());
+    imageUrl = `data:${mimeFromContentType(response.headers.get("content-type"))};base64,${buffer.toString("base64")}`;
+  }
+  return imageUrl ? String(imageUrl) : undefined;
+}
+
+function videoPayload(args, defaultModel) {
+  const prompt = args.prompt;
+  if (!prompt) throw new Error("Provide --prompt.");
+  const payload = {
+    model: String(args.model || defaultModel),
+    prompt: String(prompt),
+    duration: intArg(args, "duration", 6),
+    resolution: String(args.resolution || "768P"),
+    prompt_optimizer: boolArg(args, "prompt-optimizer", true),
+  };
+  if (args["fast-pretreatment"] !== undefined) {
+    payload.fast_pretreatment = boolArg(args, "fast-pretreatment", false);
+  }
+  if (args["callback-url"]) payload.callback_url = String(args["callback-url"]);
+  return payload;
+}
+
+async function videoT2V(args) {
+  const payload = videoPayload(args, "MiniMax-Hailuo-2.3");
+  const json = await request("POST", "/v1/video_generation", payload);
+  baseRespError(json);
+  printJson(json);
+}
+
+async function videoI2V(args) {
+  const payload = videoPayload(args, "MiniMax-Hailuo-2.3-Fast");
+  const firstFrameImage = await imageDataUrlFromArgs(args, "image-file", "image-url");
+  if (!firstFrameImage) throw new Error("Provide --image-url or --image-file.");
+  payload.first_frame_image = firstFrameImage;
+  if (payload.first_frame_image.startsWith("data:")) {
+    payload.first_frame_image = payload.first_frame_image.replace(/base64,.+$/, "base64,[inline image]");
+    const requestPayload = { ...payload, first_frame_image: firstFrameImage };
+    const json = await request("POST", "/v1/video_generation", requestPayload);
+    baseRespError(json);
+    printJson({ ...json, request: payload });
+    return;
+  }
+  const json = await request("POST", "/v1/video_generation", payload);
+  baseRespError(json);
+  printJson(json);
+}
+
+async function videoQuery(args) {
+  const taskId = args["task-id"];
+  if (!taskId) throw new Error("Provide --task-id.");
+  const json = await request("GET", `/v1/query/video_generation?task_id=${encodeURIComponent(String(taskId))}`);
+  baseRespError(json);
+  printJson(json);
+}
+
+async function videoDownload(args) {
+  const fileId = args["file-id"];
+  const out = args.out;
+  if (!fileId) throw new Error("Provide --file-id.");
+  const json = await request("GET", `/v1/files/retrieve?file_id=${encodeURIComponent(String(fileId))}`);
+  baseRespError(json);
+  const downloadUrl = json?.file?.download_url;
+  if (!downloadUrl) {
+    printJson(json);
+    return;
+  }
+  if (!out) {
+    printJson(json);
+    return;
+  }
+  const resolvedDownloadUrl = /^https?:\/\//.test(String(downloadUrl)) ? String(downloadUrl) : `https://${downloadUrl}`;
+  const response = await fetch(resolvedDownloadUrl);
+  if (!response.ok) {
+    throw new Error(`Download video failed: ${response.status} ${response.statusText}`);
+  }
+  await writeFile(String(out), Buffer.from(await response.arrayBuffer()));
+  printJson({ ...json, local_file: String(out) });
+}
+
 async function search(args) {
   const q = args.query || args.q;
   if (!q) throw new Error("Provide --query.");
@@ -420,6 +519,18 @@ async function main() {
       break;
     case "image":
       await image(args);
+      break;
+    case "video-t2v":
+      await videoT2V(args);
+      break;
+    case "video-i2v":
+      await videoI2V(args);
+      break;
+    case "video-query":
+      await videoQuery(args);
+      break;
+    case "video-download":
+      await videoDownload(args);
       break;
     case "search":
       await search(args);
