@@ -68,21 +68,31 @@ node minimax-token-plan/scripts/minimax-token-plan.mjs search --query MiniMax --
 
 If the key is missing, the script will stop and remind you to set `MINMAX_TOKEN_PLAN_KEY`.
 
+## Visual Prompt Safety
+
+For image and video generation, the helper automatically appends a no-text constraint to avoid garbled characters:
+
+```text
+No text, no letters, no numbers, no captions, no subtitles, no logo, no watermark, no readable symbols or characters anywhere in the image or video.
+```
+
+Use `--allow-text true` only when you explicitly want readable text in the generated visual.
+
 ## Examples
 
 ```bash
 # Text to speech
 node minimax-token-plan/scripts/minimax-token-plan.mjs tts --text "MiniMax test." --out speech.mp3
 
-# Image generation
+# Image generation. The no-text constraint is appended automatically.
 node minimax-token-plan/scripts/minimax-token-plan.mjs image --prompt "a tiny blue cube on a white table" --out-dir images
 
-# Text to video, async task. Uses standard Hailuo 2.3.
+# Text to video, async task. Uses standard Hailuo 2.3. The no-text constraint is appended automatically.
 node minimax-token-plan/scripts/minimax-token-plan.mjs video-t2v --prompt "A tiny robot waters a plant [固定]" --model MiniMax-Hailuo-2.3 --duration 6 --resolution 768P
 node minimax-token-plan/scripts/minimax-token-plan.mjs video-query --task-id TASK_ID
 node minimax-token-plan/scripts/minimax-token-plan.mjs video-download --file-id FILE_ID --out video.mp4
 
-# Image to video, async task. Uses Hailuo 2.3 Fast by default.
+# Image to video, async task. Uses Hailuo 2.3 Fast by default. The no-text constraint is appended automatically.
 node minimax-token-plan/scripts/minimax-token-plan.mjs video-i2v --prompt "The image slowly comes alive [固定]" --image-file images/image-1.jpeg --model MiniMax-Hailuo-2.3-Fast --duration 6 --resolution 768P
 
 # Explicitly use music-2.5 instead of the default music-2.6.

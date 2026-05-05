@@ -38,9 +38,9 @@ Commands:
   lyrics                 Generate lyrics. Options: --prompt, --mode, --lyrics, --lyrics-file, --title
   music                  Generate music. Options: --prompt, --lyrics, --lyrics-file, --out, --model, --cover-feature-id
   music-cover-preprocess Preprocess cover reference. Options: --audio-url or --audio-file
-  image                  Generate images. Options: --prompt, --out-dir, --aspect-ratio, --n, --response-format
-  video-t2v              Create text-to-video task. Options: --prompt, --model, --duration, --resolution
-  video-i2v              Create image-to-video task. Options: --prompt, --image-url or --image-file, --model, --duration, --resolution
+  image                  Generate images. Options: --prompt, --out-dir, --aspect-ratio, --n, --response-format, --allow-text
+  video-t2v              Create text-to-video task. Options: --prompt, --model, --duration, --resolution, --allow-text
+  video-i2v              Create image-to-video task. Options: --prompt, --image-url or --image-file, --model, --duration, --resolution, --allow-text
   video-query            Query video task. Options: --task-id
   video-download         Retrieve and download video file. Options: --file-id, --out
   search                 Coding Plan search. Options: --query, --count
@@ -135,6 +135,15 @@ function intArg(args, name, fallback) {
 function boolArg(args, name, fallback) {
   if (args[name] === undefined) return fallback;
   return !["false", "0", "no"].includes(String(args[name]).toLowerCase());
+}
+
+function visualPrompt(prompt, args) {
+  const value = String(prompt).trim();
+  if (boolArg(args, "allow-text", false)) return value;
+  const noTextRule =
+    "No text, no letters, no numbers, no captions, no subtitles, no logo, no watermark, no readable symbols or characters anywhere in the image or video.";
+  if (/no text|no letters|no watermark|不要文字|无文字/i.test(value)) return value;
+  return `${value}. ${noTextRule}`;
 }
 
 async function request(method, path, body, responseType = "json") {
@@ -312,7 +321,7 @@ async function image(args) {
   const responseFormat = String(args["response-format"] || (outDir ? "base64" : "url"));
   const payload = {
     model: String(args.model || "image-01"),
-    prompt: String(prompt),
+    prompt: visualPrompt(prompt, args),
     aspect_ratio: String(args["aspect-ratio"] || "1:1"),
     response_format: responseFormat,
     n: intArg(args, "n", 1),
@@ -368,7 +377,7 @@ function videoPayload(args, defaultModel) {
   if (!prompt) throw new Error("Provide --prompt.");
   const payload = {
     model: String(args.model || defaultModel),
-    prompt: String(prompt),
+    prompt: visualPrompt(prompt, args),
     duration: intArg(args, "duration", 6),
     resolution: String(args.resolution || "768P"),
     prompt_optimizer: boolArg(args, "prompt-optimizer", true),

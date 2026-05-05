@@ -35,6 +35,12 @@ node scripts/minimax-token-plan.mjs <command> [options]
 
 The script uses only Node.js 18+ built-ins.
 
+For visual generation commands (`image`, `video-t2v`, `video-i2v`), the script automatically appends a no-text rule to prompts:
+
+`No text, no letters, no numbers, no captions, no subtitles, no logo, no watermark, no readable symbols or characters anywhere in the image or video.`
+
+Only pass `--allow-text true` when the user explicitly requires readable text in the generated visual.
+
 Common commands:
 
 ```bash
@@ -54,10 +60,10 @@ node scripts/minimax-token-plan.mjs music --prompt "Mandopop, Summer, Lightheart
 node scripts/minimax-token-plan.mjs music-cover-preprocess --audio-url "https://example.com/song.mp3"
 node scripts/minimax-token-plan.mjs music --prompt "Jazz, piano, warm vocal" --lyrics-file lyrics.txt --cover-feature-id FEATURE_ID --out cover.mp3
 
-# Image generation.
+# Image generation. No-text/no-character constraint is appended automatically.
 node scripts/minimax-token-plan.mjs image --prompt "A cinematic robot gardener at dawn" --aspect-ratio 16:9 --n 2 --out-dir images
 
-# Video generation. Creation is async and returns task_id.
+# Video generation. Creation is async and returns task_id. No-text/no-character constraint is appended automatically.
 node scripts/minimax-token-plan.mjs video-t2v --prompt "A tiny robot waters a plant [固定]" --model MiniMax-Hailuo-2.3 --duration 6 --resolution 768P
 node scripts/minimax-token-plan.mjs video-i2v --prompt "The cube slowly rotates [固定]" --image-file images/photo.jpeg --model MiniMax-Hailuo-2.3-Fast
 node scripts/minimax-token-plan.mjs video-query --task-id TASK_ID
@@ -115,9 +121,11 @@ Use this table to choose the correct MiniMax model or capability from a user req
 - If the user says "cover", "翻唱", "use this reference audio", or "imitate this song/vocal style", choose `music-cover` preprocessing before `music-2.6`.
 - If the user says "lyrics", "write a chorus", "作词", or "歌词", choose `lyrics_generation`.
 - If the user says "generate image", "draw", "poster", "cover art", "logo", "插图", or "图片生成", choose `image-01`.
+- For every `image-01` prompt, enforce no visible text/letters/numbers/captions/subtitles/logos/watermarks/readable symbols unless the user explicitly asks for readable text.
 - If the user says "video", "短视频", "文生视频", or "生成视频" with only text, choose `video-t2v` using `MiniMax-Hailuo-2.3`, `duration=6`, `resolution=768P`.
 - If the user says "图生视频", "animate", "make this image move", or provides a starting image for video, choose `video-i2v` using `MiniMax-Hailuo-2.3-Fast`, `duration=6`, `resolution=768P`.
 - If the user explicitly asks for "standard", "non-fast", "higher quality", `Hailuo-2.3`, or `MiniMax-Hailuo-2.3` for image-to-video, choose `MiniMax-Hailuo-2.3` instead of Fast.
+- For every video prompt, enforce no visible text/letters/numbers/captions/subtitles/logos/watermarks/readable symbols unless the user explicitly asks for readable text.
 - If the user provides an existing image/screenshot and asks what it contains, what is wrong, to extract text, or to analyze UI/diagram/chart content, choose `coding-plan-vlm`.
 - If the user asks for latest/current/live information, source links, public facts, API docs, news, or external research, choose `coding-plan-search`.
 - For multi-step creative tasks, chain models: `lyrics_generation` -> `music-2.6`, `music-cover` -> `music-2.6`, `image-01` -> `coding-plan-vlm` for self-checking, or `image-01` -> `video-i2v` to animate a generated image.
@@ -227,6 +235,11 @@ Use for:
 
 - Illustrations, posters, cover art, concept images, product visuals, thumbnails.
 
+Prompt rule:
+
+- Always avoid visible text, letters, numbers, captions, subtitles, logos, watermarks, and readable symbols.
+- The script appends this restriction automatically. Use `--allow-text true` only when the user explicitly requires readable text.
+
 Command:
 
 ```bash
@@ -244,6 +257,11 @@ Use for:
 - Quick image-to-video generations.
 - Requests to animate an existing/generated still image.
 - Token Plan quota item `Hailuo-2.3-Fast-768P 6s`.
+
+Prompt rule:
+
+- Always avoid visible text, letters, numbers, captions, subtitles, logos, watermarks, and readable symbols in the video.
+- The script appends this restriction automatically. Use `--allow-text true` only when the user explicitly requires readable text.
 
 Avoid for:
 
@@ -270,6 +288,11 @@ Use for:
 - User explicitly asks for `Hailuo-2.3`, "standard", or "non-fast".
 - User prefers quality/instruction following over fastest generation.
 - Token Plan quota item `Hailuo-2.3-768P 6s`.
+
+Prompt rule:
+
+- Always avoid visible text, letters, numbers, captions, subtitles, logos, watermarks, and readable symbols in the video.
+- The script appends this restriction automatically. Use `--allow-text true` only when the user explicitly requires readable text.
 
 Command:
 
@@ -336,6 +359,7 @@ node scripts/minimax-token-plan.mjs vlm --prompt "Describe this image briefly" -
 - Text-to-video model: `MiniMax-Hailuo-2.3`
 - Image-to-video model: `MiniMax-Hailuo-2.3-Fast`
 - Video duration/resolution: `6` seconds, `768P`
+- Visual prompt constraint: no visible text, letters, numbers, captions, subtitles, logos, watermarks, or readable symbols by default
 
 ## Workflow Guidance
 
@@ -347,6 +371,7 @@ Before calling an API, verify the requested modality and output format:
 - For covers, run `music-cover-preprocess` on the reference audio and pass the returned `cover_feature_id` to `music`.
 - For image generation, use `image` and request `url` unless the user needs local files.
 - For video generation, use `video-t2v` with `MiniMax-Hailuo-2.3` for prompt-only video and `video-i2v` with `MiniMax-Hailuo-2.3-Fast` for first-frame image animation; poll with `video-query`, then save with `video-download`.
+- For image/video generation, keep prompts visual-only and avoid requesting any text rendering unless the user explicitly asks for it.
 - For live information search, use `search`.
 - For image understanding, use `vlm`.
 
